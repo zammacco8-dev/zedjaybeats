@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Documento Web</title>
+    <title>Sito Press Kit</title>
     <!-- PDF.js CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
@@ -75,8 +75,8 @@
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-        // Link di streaming diretto da Google Drive
-        const pdfUrl = 'https://docs.google.com/uc?export=download&id=1cJninOFMT5O7vU01qFVjoI_S2ElLH_ES';
+        // Link diretto al PDF ospitato nelle GitHub Releases
+        const pdfUrl = 'https://github.com/zammacco8-dev/zedjaybeats/releases/download/site/documentodpf.pdf';
         
         const container = document.getElementById('pdf-viewer-container');
         const loading = document.getElementById('loading');
@@ -92,7 +92,7 @@
                     await renderPage(pageNum);
                 }
             } catch (error) {
-                loading.innerHTML = 'Impossibile caricare il file PDF.<br>Assicurati che il file su Google Drive sia impostato con condivisione pubblica ("Chiunque abbia il link").';
+                loading.innerHTML = 'Impossibile caricare il file PDF.<br>Verifica la connessione o il link del file.';
                 console.error(error);
             }
         }
@@ -141,4 +141,15 @@
 
         window.addEventListener('load', renderAllPages);
 
-        let resizeTimeout
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                container.innerHTML = '';
+                loading.style.display = 'block';
+                renderAllPages();
+            }, 300);
+        });
+    </script>
+</body>
+</html>
