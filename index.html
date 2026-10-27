@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documento Web</title>
+    <!-- PDF.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #ffffff;
+            overflow-x: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        #pdf-viewer-container {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .page-container {
+            position: relative;
+            margin: 0 auto;
+            box-shadow: none;
+        }
+
+        canvas {
+            display: block;
+            width: 100% !important;
+            height: auto !important;
+        }
+
+        /* Layer interattivo per rendere attivi link e selezioni */
+        .annotationLayer, .textLayer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: auto;
+        }
+
+        .annotationLayer a {
+            position: absolute;
+            font-size: 1px;
+            line-height: 1;
+            cursor: pointer;
+        }
+
+        .annotationLayer a:hover {
+            background: rgba(255, 255, 0, 0.2);
+        }
+
+        #loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.1rem;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loading">Caricamento documento in corso...</div>
+    <div id="pdf-viewer-container"></div>
+
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        // Link di streaming diretto da Google Drive
+        const pdfUrl = 'https://docs.google.com/uc?export=download&id=1cJninOFMT5O7vU01qFVjoI_S2ElLH_ES';
+        
+        const container = document.getElementById('pdf-viewer-container');
+        const loading = document.getElementById('loading');
+
+        let pdfDoc = null;
+
+        async function renderAllPages() {
+            try {
+                pdfDoc = await pdfjsLib.getDocument(pdfUrl).promise;
+                loading.style.display = 'none';
+
+                for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
+                    await renderPage(pageNum);
+                }
+            } catch (error) {
+                loading.innerHTML = 'Impossibile caricare il file PDF.<br>Assicurati che il file su Google Drive sia impostato con condivisione pubblica ("Chiunque abbia il link").';
+                console.error(error);
+            }
+        }
+
+        async function renderPage(pageNum) {
+            const page = await pdfDoc.getPage(pageNum);
+            
+            const targetWidth = window.innerWidth > 900 ? 900 : window.innerWidth;
+            const unscaledViewport = page.getViewport({ scale: 1.0 });
+            const scale = targetWidth / unscaledViewport.width;
+            const viewport = page.getViewport({ scale: scale });
+
+            const pageWrapper = document.createElement('div');
+            pageWrapper.className = 'page-container';
+            pageWrapper.style.width = viewport.width + 'px';
+            pageWrapper.style.height = viewport.height + 'px';
+
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+
+            pageWrapper.appendChild(canvas);
+
+            const annotationLayerDiv = document.createElement('div');
+            annotationLayerDiv.className = 'annotationLayer';
+            pageWrapper.appendChild(annotationLayerDiv);
+
+            container.appendChild(pageWrapper);
+
+            await page.render({
+                canvasContext: ctx,
+                viewport: viewport
+            }).promise;
+
+            const annotations = await page.getAnnotations();
+            pdfjsLib.AnnotationLayer.render({
+                viewport: viewport.clone({ dontFlip: true }),
+                div: annotationLayerDiv,
+                annotations: annotations,
+                page: page,
+                linkService: null,
+                downloadManager: null
+            });
+        }
+
+        window.addEventListener('load', renderAllPages);
+
+        let resizeTimeout
